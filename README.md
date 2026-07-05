@@ -1,470 +1,606 @@
-# TradeCopier Pro Enterprise
+# TradeCopier Pro Enterprise Telegram Bot
+## NinjaTrader 8 Multi-Account Trade Copier with Simple Telegram Alerts
 
-**TradeCopier Pro Enterprise** is a NinjaTrader 8 Add-On for execution-based multi-account trade copying.  
-It is designed to copy filled master account executions to one or more configured follower accounts, with a safety-first workflow, TEST RUN / LIVE operation modes, preflight validation, routing controls, audit logging, and a professional WPF control center.
+TradeCopier Pro Enterprise Telegram Bot is a NinjaTrader 8 Add-On for multi-account trade copying, follower account management, risk checks, audit logging, preflight validation, and clean Telegram notifications.
 
-> ⚠️ **Risk Disclaimer**  
-> This software can submit real orders when LIVE MODE is enabled. Trading futures and financial instruments involves substantial risk. Use TEST RUN mode first, validate all routing, and understand every follower account configuration before enabling live copy routing. This project is provided for educational and operational tooling purposes only and does not constitute financial advice.
-## Demo Video
+This build focuses on one simple goal:
 
+> One order = one clear Telegram alert.
 
-<img src="https://img.youtube.com/vi/rmuI6RVqsLs/hqdefault.jpg" alt="Demo video">
-<br>
-
-
-
-## Key Features
-
-### TEST RUN / LIVE MODE
-
-TradeCopier Pro Enterprise supports two operation modes:
-
-- **TEST RUN**  
-  Simulates follower submissions only. No real follower orders are sent. The system logs what it *would* submit using `DRY_RUN_SUBMIT`.
-
-- **LIVE MODE**  
-  Sends real follower orders after successful safety checks and confirmation. LIVE submissions are logged as `LIVE_SUBMIT_ATTEMPT` followed by `SUBMIT`.
-
-The internal settings map TEST RUN to `DryRunMode = true` and LIVE MODE to `DryRunMode = false`.
+The Telegram alert system is designed to avoid noisy lifecycle spam such as separate Submitted, Filled, PositionUpdate, and execution messages for the same order.
 
 ---
 
-### Single Main Control: ENABLE / DISABLE COPY
+## Important Disclaimer
 
-The dashboard is simplified around one large main control:
+Trading futures, forex, CFDs, equities, or other financial instruments involves substantial risk. This software is provided for automation support, monitoring, and workflow assistance only.
 
-- **ENABLE COPY**  
-  Runs the safety workflow, including preflight checks and arming, before enabling routing.
+Use at your own risk. The author is not responsible for trading losses, missed orders, duplicate orders, incorrect configuration, broker/platform issues, delayed Telegram delivery, internet outages, or different behavior between Playback, Simulation, and Live environments.
 
-- **DISABLE COPY**  
-  Stops new copied orders by moving the engine back to OFF.
-
-The button changes state based on the runtime state:
-
-- `Off`, `Ready`, `Error` → green **ENABLE COPY**
-- `On` → red **DISABLE COPY**
-- `Arming` → **ARMING...**
-- `KillSwitch` → **KILL SWITCH ACTIVE**
-
-This simplified dashboard wraps the internal `StartSafeCopy()` workflow while keeping advanced controls available separately.
+Always test in Playback or Simulation before using any live account.
 
 ---
 
-### Safety-First Workflow
+## Main Features
 
-Before copy routing can become active, the system validates configuration through a preflight process.
+### Trade Copier Engine
 
-The preflight validation checks:
+- Master account and master instrument selection
+- Multiple follower account configuration
+- Quantity multiplier and contract conversion support
+- Quantity rounding modes
+- Follower enable / disable control
+- Copy support for Market, Limit, Stop Market, and Stop Limit orders
+- LIVE MODE and TEST RUN mode
+- Preflight safety checks before enabling copy
+- Kill Switch support
+- Expected vs actual position tracking
+- Out-of-sync detection
+- CSV audit logging
 
-- master account availability
-- master instrument validity
-- at least one enabled follower
-- follower account availability
-- follower instrument validity
-- duplicate follower routes
-- invalid multiplier / conversion settings
-- follower flat requirements
-- runtime-disabled follower states
+### Safety Features
 
-The `RunPreflight()` process resolves accounts and instruments, validates the configuration, updates the preflight report, computes a configuration hash, and rebuilds account subscriptions when successful.
-
----
-
-### Execution-Based Copying
-
-The copier listens for master account execution events and routes filled master executions to enabled follower accounts.
-
-For each eligible master execution, the engine:
-
-1. validates runtime state and safety gates,
-2. prevents duplicate execution processing,
-3. creates a copy batch,
-4. calculates follower quantity,
-5. runs risk checks,
-6. runs slippage checks,
-7. either logs a TEST RUN submission or submits a LIVE follower order.
-
-The actual order submission is handled through NinjaTrader account order creation and `Submit()` calls in LIVE MODE.
+- Global trading enable / disable
+- Global kill switch
+- Preflight validation
+- Optional follower-flat requirement before enable
+- Optional master-flat requirement before enable
+- Config dirty detection
+- Blocking if config changed after preflight
+- Max order quantity, daily contracts, and trades per day
+- Follower-level risk limits
+- Slippage controls
+- Quote availability checks
+- Runtime error counters
+- Emergency flatten / cancel controls
 
 ---
 
-### Follower Configuration
+## Telegram Trade Monitor
 
-Each follower can be configured with:
+The Telegram Trade Monitor sends simple, human-readable alerts for manually placed or filled orders.
 
-- enabled / disabled status
-- follower account
-- follower instrument
-- quantity multiplier
-- contract conversion factor
-- rounding mode
-- min quantity
-- max order quantity
-- max position size
-- daily contract limit
-- trades-per-day limit
-- allowed order types
-- flat-before-enable rules
-- out-of-sync behavior
-- slippage tick limit
-
-Follower rows are shown in the Control Center grid with runtime information such as expected position, actual position, sync status, last order state, and last error.
-
----
-
-### Quantity Calculation
-
-Follower order quantity is calculated from:
+Main design goal:
 
 ```text
-master quantity × quantity multiplier × contract conversion factor
+Do not spam Telegram.
+Show only the useful trading signal.
 ```
 
-Supported rounding modes include:
+### Recommended Default Behavior
 
-- Floor
-- Ceiling
-- RoundNearest
-- MinimumOneIfMasterNonZero
-- SkipIfBelowOne
+The default Telegram preset is optimized for clean alerts:
 
-This allows flexible routing such as ES → MES, NQ → MNQ, or proportional account sizing.
+- Telegram Trade Monitor: ON
+- Monitor when Copy is OFF: ON
+- Monitor master account only: ON
+- Manual order alerts: ON
+- Manual execution alerts: OFF
+- Position updates: OFF
+- Simple order alerts: ON
+- Order placement only: ON
+- One alert per Order ID: ON
+- Suppress lifecycle spam: ON
+- Show price level: ON
+- Market orders use execution price: ON
+- Suppress fill alert if placement alert already sent: ON
 
----
+### Behavior by Order Type
 
-### Risk Controls
-
-The built-in risk manager can block follower orders based on:
-
-- invalid quantity
-- global max order quantity
-- follower max order quantity
-- global max daily contracts
-- follower max daily contracts
-- global max trades per day
-- follower max trades per day
-- follower max position size
-- follower not flat
-- follower out-of-sync state
-
-Risk-blocked orders are logged and do not reach the live order router.
-
----
-
-### Slippage Controls
-
-The slippage system supports multiple modes:
-
-- `Off`
-- `WarnOnly`
-- `BlockOrder`
-- `ConvertToLimit`
-
-The engine can block or convert orders based on max slippage ticks, instrument tick size, missing quote rules, and quote age settings.
+| Order Type | Telegram Behavior |
+|---|---|
+| Limit order | One `Order Placed` alert with limit price |
+| Stop Market order | One `Order Placed` alert with stop price |
+| Stop Limit order | One `Order Placed` alert with stop and limit price |
+| Market order | One `Market Filled` alert with actual fill price |
+| Stop/Limit order later fills | No second Telegram alert by default |
+| Position update | Suppressed by default |
+| Execution lifecycle spam | Suppressed by default |
 
 ---
 
-### Kill Switch
+## Example Telegram Messages
 
-The system includes a Kill Switch state that blocks new copy submissions.
-
-Optional Kill Switch behavior includes:
-
-- cancel working orders
-- flatten follower accounts
-- include disabled followers
-- allow reset only if all followers are flat
-
-The state machine treats `KillSwitch` as a protected emergency state that requires explicit reset logic.
-
----
-
-### Route Summary Header
-
-The Control Center header displays a compact routing summary:
+### Limit Order
 
 ```text
-Master: [MasterAccount] | [MasterInstrument]
-[MasterAccount] [MasterInstrument] → [N] followers
-Followers: [N] enabled / [M] instruments
+Order Placed
+
+NQ 12-25
+BUY LIMIT x1
+Limit: 24823.5
+Account: Playback101
+
+Copy: OFF
+Monitor only
 ```
 
-Follower route details are also available through tooltip-style route summaries, including follower account, instrument, and multiplier.
-
----
-
-### LIVE MODE Visual Warning
-
-When LIVE MODE is active and the copy engine is ON, the LIVE MODE badge blinks between critical/danger colors to make the live-routing state clearly visible. TEST RUN mode uses a fixed warning color.
-
----
-
-### Audit Logging
-
-TradeCopier Pro Enterprise maintains an event log inside the UI and can write CSV audit logs.
-
-Logged event types include:
-
-- diagnostics
-- state changes
-- preflight results
-- subscription rebuilds
-- TEST RUN submissions
-- LIVE submit attempts
-- submitted orders
-- submit exceptions
-- risk blocks
-- slippage blocks
-- follower errors
-- flatten actions
-- kill switch reset blocks
-
-CSV audit output is configured through `EnableCsvAudit` and `AuditFileName`.
-
----
-
-## Control Center Overview
-
-The WPF Control Center includes:
-
-- Dashboard
-- Quick Start
-- Master Setup
-- Followers
-- Risk & Safety
-- Slippage
-- Preflight Check
-- Event Log
-- Settings / About
-
-The UI uses a sidebar navigation layout, a professional header, mode banners, status indicators, and a simplified main ENABLE / DISABLE COPY workflow.
-
----
-
-## Recommended Workflow
-
-### 1. Configure Master
-
-Select the account and instrument that will act as the trade source.
-
-Example:
+### Stop Market Order
 
 ```text
-Master: Sim101 | ES 09-26
+Order Placed
+
+NQ 12-25
+SELL STOP MARKET x1
+Stop: 24797.5
+Account: Playback101
+
+Copy: OFF
+Monitor only
+```
+
+### Stop Limit Order
+
+```text
+Order Placed
+
+NQ 12-25
+BUY STOP LIMIT x1
+Stop: 24799.75
+Limit: 24800.25
+Account: Playback101
+
+Copy: OFF
+Monitor only
+```
+
+### Market Order
+
+```text
+Market Filled
+
+NQ 12-25
+BUY MARKET x1
+Fill: 24814.25
+Account: Playback101
+
+Copy: OFF
+Monitor only
 ```
 
 ---
 
-### 2. Add Followers
+## One Alert Per Order Logic
 
-Add one or more follower account routes.
-
-Example:
+This version prevents duplicate Telegram alerts for the same order by building an internal simple order key:
 
 ```text
-SimAccount10 → MES 09-26
-SimAccount11 → ES 09-26
+Account | Instrument | OrderId
+```
+
+When a simple order placement alert is sent, that order key is stored. If a later market fill or execution event is received for the same order and the placement alert already exists, the fill alert is suppressed.
+
+This prevents cases like:
+
+```text
+Order Placed
+SELL STOP MARKET x1
+Stop: 24797.5
+```
+
+followed immediately by:
+
+```text
+Market Filled
+SELL MARKET x1
+Fill: 24797.25
+```
+
+By default, only the first useful alert is sent.
+
+---
+
+## Event Types
+
+### `MANUAL_ORDER_PLACED_SIMPLE`
+
+Used for simple placement alerts: Limit, Stop Market, and Stop Limit orders.
+
+```text
+MANUAL_ORDER_PLACED_SIMPLE
+Order Placed
+NQ 12-25
+SELL LIMIT x1
+Limit: 24827.5
+```
+
+### `MANUAL_MARKET_FILLED_SIMPLE`
+
+Used for pure Market order fills where there is no meaningful placement price.
+
+```text
+MANUAL_MARKET_FILLED_SIMPLE
+Market Filled
+NQ 12-25
+BUY MARKET x1
+Fill: 24800.5
+```
+
+### `TELEGRAM_FILTERED_OUT`
+
+Used for internal/debug logging when an alert is intentionally suppressed.
+
+```text
+TELEGRAM_FILTERED_OUT
+Market fill suppressed because placement alert was already sent for this OrderId.
 ```
 
 ---
 
-### 3. Start in TEST RUN
+## Telegram Default Settings Button
 
-Use TEST RUN mode first.
-
-In TEST RUN mode:
-
-- no real follower orders are submitted,
-- the event log shows what would have been submitted,
-- logs use `DRY_RUN_SUBMIT`.
-
----
-
-### 4. Press ENABLE COPY
-
-The main ENABLE COPY button runs the guided workflow.
-
-It performs:
+The Telegram Alerts panel includes a default preset button:
 
 ```text
-Preflight → Arming → Ready → Enable Copy
+APPLY DEFAULT TELEGRAM SETTINGS
 ```
 
-If preflight fails, the copier does not enable routing.
+or:
+
+```text
+ALAPBEÁLLÍTÁS
+```
+
+This button applies the recommended simple Telegram configuration, enables minimal alerts, saves the settings, and writes an event log entry:
+
+```text
+TELEGRAM_DEFAULT_SETTINGS_APPLIED
+Default Telegram simple order alerts applied
+```
 
 ---
 
-### 5. Validate Routing
+## Telegram Status Badge
 
-Review:
+| Badge | Meaning |
+|---|---|
+| `TG OFF` | Telegram alerts disabled |
+| `TG NOT SET` | Telegram enabled but token or chat ID is missing |
+| `TG ACTIVE` | Telegram enabled and configured |
+| `TG QUEUED N` | Messages are queued |
+| `TG ERROR` | Telegram send failure or last error exists |
 
-- Event Log
-- follower grid
-- master/follower instruments
-- expected vs actual positions
-- quantity multipliers
-- route summary
-
----
-
-### 6. Switch to LIVE MODE
-
-Only switch to LIVE after successful TEST RUN validation.
-
-LIVE MODE requires confirmation because real follower orders may be submitted.
-
----
-
-### 7. Monitor Live Routing
-
-When LIVE MODE and ON state are active:
-
-- LIVE MODE badge blinks,
-- follower orders are submitted,
-- each submit attempt is logged,
-- actual submissions are shown as `SUBMIT`.
+Telegram is outbound-only and never executes trading commands.
 
 ---
 
 ## Installation
 
-Copy the Add-On file into the NinjaTrader 8 custom AddOns folder:
+Copy the `.cs` file into your NinjaTrader 8 AddOns folder.
 
-```text
-Documents\NinjaTrader 8\bin\Custom\AddOns\
-```
-
-The source comment currently references the install path as:
+Recommended path:
 
 ```text
 Documents\NinjaTrader 8\bin\Custom\AddOns\TradeCopierProEnterpriseV3.cs
 ```
 
-The visible product name in the UI is **TradeCopier Pro Enterprise**, while some internal class and file names still retain `V3` naming for compatibility.
-
-After copying the file:
+Then:
 
 1. Open NinjaTrader 8.
-2. Open NinjaScript Editor.
-3. Compile the Add-On.
-4. Restart NinjaTrader if required.
-5. Open from:
+2. Go to `New > NinjaScript Editor`.
+3. Compile NinjaScript.
+4. Restart NinjaTrader if needed.
+5. Open the Control Center menu.
+6. Launch `TradeCopier Pro Enterprise`.
+
+---
+
+## Telegram Setup
+
+To use Telegram alerts, you need:
+
+- Telegram Bot Token
+- Telegram Chat ID
+
+In the Telegram Alerts panel:
+
+1. Enable Telegram Alerts.
+2. Enter Bot Token.
+3. Enter Chat ID.
+4. Click Save Config.
+5. Click Send Test Message.
+6. Apply Default Telegram Settings.
+7. Confirm that `TG ACTIVE` appears.
+
+---
+
+## Recommended First-Time Setup
+
+1. Start in Playback or Simulation.
+2. Open TradeCopier Pro Enterprise.
+3. Select master account.
+4. Select master instrument.
+5. Add follower accounts if using copy routing.
+6. Keep mode in TEST RUN.
+7. Configure Telegram.
+8. Click `APPLY DEFAULT TELEGRAM SETTINGS`.
+9. Send a test Telegram message.
+10. Place test Market, Limit, Stop Market, and Stop Limit orders.
+11. Confirm alert behavior.
+12. Only then consider LIVE MODE.
+
+---
+
+## Testing Checklist
+
+### Telegram Connection
+
+- [ ] Bot token entered
+- [ ] Chat ID entered
+- [ ] Send Test Message works
+- [ ] Telegram badge shows `TG ACTIVE`
+- [ ] No last error displayed
+
+### Market Order
+
+Expected:
 
 ```text
-Tools → TradeCopier Pro Enterprise
+Market Filled
+Instrument
+BUY/SELL MARKET xQuantity
+Fill: actual price
+```
+
+- [ ] Only one Telegram alert
+- [ ] Fill price shown
+- [ ] No separate placement alert
+- [ ] No position update spam
+
+### Limit Order
+
+Expected:
+
+```text
+Order Placed
+Instrument
+BUY/SELL LIMIT xQuantity
+Limit: price
+```
+
+- [ ] Only one Telegram alert
+- [ ] Limit price shown
+- [ ] No second fill alert by default
+
+### Stop Market Order
+
+Expected:
+
+```text
+Order Placed
+Instrument
+BUY/SELL STOP MARKET xQuantity
+Stop: price
+```
+
+- [ ] Only one Telegram alert
+- [ ] Stop price shown
+- [ ] Fill alert suppressed if placement alert already sent
+
+### Stop Limit Order
+
+Expected:
+
+```text
+Order Placed
+Instrument
+BUY/SELL STOP LIMIT xQuantity
+Stop: price
+Limit: price
+```
+
+- [ ] Only one Telegram alert
+- [ ] Stop price shown
+- [ ] Limit price shown
+- [ ] No lifecycle spam
+
+---
+
+## Default Telegram Configuration
+
+```text
+TelegramEnableTradeMonitor = true
+TelegramMonitorWhenCopyOff = true
+TelegramMonitorMasterAccountOnly = true
+TelegramMonitorAllConfiguredAccounts = false
+TelegramMonitorAllAccounts = false
+
+TelegramSendManualExecutions = false
+TelegramSendManualOrders = true
+TelegramSendPositionUpdates = false
+
+TelegramSimpleOrderAlerts = true
+TelegramOrderPlacementOnly = true
+TelegramSuppressOrderLifecycleSpam = true
+TelegramSendOnlyOneAlertPerOrderId = true
+TelegramShowOrderPriceLevel = true
+
+TelegramMarketOrdersUseExecutionPrice = true
+TelegramSimpleMarketExecutionAlerts = true
+TelegramSuppressFillIfPlacementAlertSent = true
+
+TelegramIgnoreCopierGeneratedOrders = true
+TelegramIgnoreDuplicateExecutions = true
+
+TelegramCompactMode = true
+TelegramIncludeAccountNames = true
+TelegramIncludeFollowerDetails = false
+TelegramIncludePrices = true
+TelegramIncludeBatchId = false
+
+TelegramSendLiveSubmits = true
+TelegramSendDryRunSubmits = false
+TelegramSendRiskBlocks = true
+TelegramSendSlippageBlocks = true
+TelegramSendFollowerErrors = true
+TelegramSendStateChanges = false
+TelegramSendPreflightResults = false
+TelegramSendKillSwitchEvents = true
+
+TelegramRateLimitMs = 500
+TelegramMaxQueueSize = 250
 ```
 
 ---
 
-## Configuration Files
+## Configuration and Audit Files
 
-Settings are stored under the NinjaTrader user data directory in:
+Settings are saved under the NinjaTrader user data directory:
 
 ```text
-TradeCopierProEnterpriseV3
+TradeCopierProEnterpriseV3\TradeCopierProEnterpriseV3_Settings.xml
 ```
 
-The settings repository stores configuration in XML and creates backups before replacing the active settings file. CSV audit logs are also written in the same product folder when enabled.
+Default audit file name:
+
+```text
+TradeCopierProEnterpriseV3_Audit.csv
+```
+
+Audit events include settings saved, preflight result, state changes, Telegram queued messages, Telegram send failures, manual order alerts, manual market fill alerts, filtered/suppressed Telegram alerts, follower errors, slippage blocks, risk blocks, and emergency events.
 
 ---
 
-## Runtime States
+## Common Troubleshooting
 
-The engine uses a state machine with the following states:
+### Telegram says `TG NOT SET`
 
-| State | Meaning |
-|---|---|
-| `Off` | Copying is disabled |
-| `Arming` | Safety checks / preflight workflow in progress |
-| `Ready` | Preflight passed and copier is ready to enable |
-| `On` | Copy routing is active |
-| `Paused` | Paused state, available internally / advanced workflow |
-| `Error` | Action required |
-| `KillSwitch` | Emergency lock active |
-| `Disconnected` | Connection uncertainty / recovery state |
+Bot Token or Chat ID is missing. Enter both values, save config, and send a test message.
 
-The main dashboard simplifies this into a user-facing ENABLE / DISABLE workflow while advanced controls remain available.
+### Telegram says `TG ERROR`
+
+Possible causes include wrong bot token, wrong chat ID, bot not started by the user, connection issue, Telegram API issue, or firewall/security software blocking outbound requests.
+
+### I receive no Telegram alerts
+
+Check Telegram Alerts, Trade Monitor, monitored account, instrument filter, master account selection, Telegram badge status, Event Log entries, Chat ID, and whether the bot was started in Telegram.
+
+### I receive too many Telegram alerts
+
+Use:
+
+```text
+APPLY DEFAULT TELEGRAM SETTINGS
+```
+
+Also check:
+
+```text
+TelegramSendPositionUpdates = false
+TelegramSendManualExecutions = false
+TelegramSuppressOrderLifecycleSpam = true
+TelegramSendOnlyOneAlertPerOrderId = true
+TelegramSuppressFillIfPlacementAlertSent = true
+```
+
+### Stop Market sends placement and fill alerts
+
+This should be suppressed by default. Check:
+
+```text
+TelegramSuppressFillIfPlacementAlertSent = true
+TelegramSendOnlyOneAlertPerOrderId = true
+TelegramSuppressOrderLifecycleSpam = true
+```
+
+### Market order does not show placement price
+
+This is expected. Market orders do not have a pre-defined limit or stop price. The system waits for execution and sends the actual fill price.
 
 ---
 
-## Event Examples
+## File Structure
 
-### TEST RUN
+Current single-file NinjaTrader Add-On:
 
 ```text
-DRY_RUN_SUBMIT
-TEST RUN ONLY - would submit Buy 1 Market MES 09-26. No real order was sent.
+TradeCopierProEnterpriseV3.cs
 ```
 
-### LIVE MODE
+Main internal modules:
+
+- TradeCopierProEnterpriseV3
+- TradeCopierV3ControlCenter
+- TradeCopierV3Services
+- TradeCopierV3Engine
+- TcpV3Settings
+- TelegramNotifierV3
+- AuditLoggerV3
+- AccountSubscriptionManager
+- PreflightValidatorV3
+- RiskManagerV3
+- SlippageEngineV3
+- OrderRouterV3
+- PositionSynchronizerV3
+- LatencyMonitorV3
+
+---
+
+## Development Notes
+
+Important NinjaTrader note:
 
 ```text
-LIVE_SUBMIT_ATTEMPT
-LIVE MODE - submitting Buy 1 Market MES 09-26
+Do NOT add:
+using NinjaTrader.Gui.ControlCenter;
+```
 
-SUBMIT
-Buy 1 Market
+In this NinjaTrader 8 build, ControlCenter is a type, not a namespace.
+
+---
+
+## Security Notes
+
+- Never share your Telegram Bot Token publicly.
+- Do not commit live tokens to GitHub.
+- Do not commit real account identifiers if this repository is public.
+- Use `.gitignore` for local settings and backups.
+
+Recommended `.gitignore` entries:
+
+```gitignore
+*.xml
+*.bak
+*.tmp
+*_Settings.xml
+*_Audit.csv
+*.corrupt_*
 ```
 
 ---
 
-## Safety Notes
+## Version Notes
+
+### Telegram One Alert Per Order Build
+
+This version adds:
+
+- Simple Telegram default preset
+- MANUAL_ORDER_PLACED_SIMPLE
+- MANUAL_MARKET_FILLED_SIMPLE
+- Market order fill price alerts
+- Stop / Limit placement price alerts
+- TelegramSuppressFillIfPlacementAlertSent
+- TelegramSendOnlyOneAlertPerOrderId
+- Order ID based duplicate suppression
+- Cleaner Telegram message format
+- Telegram status badge improvements
+- Safer default Telegram monitor behavior
+
+---
+
+## Final Warning
 
 Before using LIVE MODE:
 
-- verify master account,
-- verify follower accounts,
-- verify instruments,
-- verify contract conversions,
-- verify quantity multipliers,
-- run TEST RUN first,
-- confirm routed order sizes,
-- confirm follower account permissions,
-- use SIM accounts first,
-- use small size when validating,
-- monitor NinjaTrader Positions and Orders tabs.
+- Test in Playback.
+- Test in Simulation.
+- Confirm Telegram alerts.
+- Confirm follower routing.
+- Confirm risk limits.
+- Confirm preflight passes.
+- Confirm Kill Switch behavior.
 
-Do not rely only on UI status. Always verify actual NinjaTrader account/order state.
+LIVE MODE may submit real orders to real accounts.
 
----
-
-## Technical Notes
-
-TradeCopier Pro Enterprise is implemented as a NinjaTrader 8 Add-On using C# and WPF.
-
-Core components include:
-
-- AddOn bootstrap
-- Control Center window
-- ViewModel with dispatcher-safe updates
-- settings repository
-- state machine
-- account subscription manager
-- execution router
-- quantity calculator
-- risk manager
-- slippage engine
-- position synchronizer
-- latency monitor
-- audit logger
-
-Observable UI collections and bound properties are updated through dispatcher-safe methods to avoid WPF cross-thread collection issues.
-
----
-
-## About
-
-**TradeCopier Pro Enterprise**  
-Created by **Juhász Előd Farkas**
-
-- GitHub: https://github.com/elodfarkas
-- LinkedIn: https://www.linkedin.com/in/elod/
-
----
-
-## Disclaimer
-
-This software is provided as-is, without warranty of any kind.  
-The author is not responsible for trading losses, configuration mistakes, platform issues, broker-side behavior, rejected orders, duplicate routing, latency, slippage, or any other financial consequence.
-
-Use at your own risk. Always test thoroughly in simulation before live usage.
+Use carefully.
