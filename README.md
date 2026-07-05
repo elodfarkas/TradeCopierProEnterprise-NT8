@@ -25,7 +25,9 @@ Always test in Playback or Simulation before using any live account.
 ## Main Features
 
 
-[![NinjaTrader TradeCopier + TelegramA/hqdefault.jpg](https://www.youtube.com/watch?v=0kig3umPFbA)
+https://www.youtube.com/watch?v=0kig3umPFbA
+
+
 
 ### Trade Copier Engine
 
