@@ -2,6 +2,7 @@
 ## NinjaTrader 8 Multi-Account Trade Copier with Simple Telegram Alerts
 
 TradeCopier Pro Enterprise Telegram Bot is a NinjaTrader 8 Add-On for multi-account trade copying, follower account management, risk checks, audit logging, preflight validation, and clean Telegram notifications.
+<img width="3830" height="2110" alt="image" src="https://github.com/user-attachments/assets/fc1efcca-95d3-40f6-a93a-a4ac164f6f3a" />
 
 This build focuses on one simple goal:
 
@@ -22,6 +23,9 @@ Always test in Playback or Simulation before using any live account.
 ---
 
 ## Main Features
+
+
+[![TradeCopier Pro Enterprise Telegram/hqdefault.jpg](https://www.youtube.com/watch?v=0kig3umPFbA)
 
 ### Trade Copier Engine
 
